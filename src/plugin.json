@@ -1,0 +1,42 @@
+{
+  "$schema": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/developers/plugins/plugin.schema.json",
+  "type": "app",
+  "name": "Screenshot Demo",
+  "id": "dprokop-screenshotdemo-app",
+  "info": {
+    "keywords": ["app", "screenshot", "demo"],
+    "description": "Demo of the new @grafana/runtime panel screenshot API",
+    "author": {
+      "name": "Dprokop"
+    },
+    "logos": {
+      "small": "img/logo.svg",
+      "large": "img/logo.svg"
+    },
+    "screenshots": [],
+    "version": "%VERSION%",
+    "updated": "%TODAY%"
+  },
+  "extensions": {
+    "addedLinks": [
+      {
+        "targets": ["grafana/dashboard/panel/menu"],
+        "title": "Take screenshot (demo)",
+        "description": "Demo of the new @grafana/runtime panel screenshot API"
+      }
+    ]
+  },
+  "includes": [
+    {
+      "type": "page",
+      "name": "Home",
+      "path": "/a/%PLUGIN_ID%/one",
+      "addToNav": true,
+      "defaultNav": true
+    }
+  ],
+  "dependencies": {
+    "grafanaDependency": ">=12.3.0",
+    "plugins": []
+  }
+}
