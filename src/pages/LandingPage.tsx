@@ -20,7 +20,7 @@ const FORMAT_OPTIONS: Array<{ label: string; value: Format }> = [
   { label: 'WebP', value: 'webp' },
 ];
 
-function PageFive() {
+function LandingPage() {
   const s = useStyles2(getStyles);
   const [format, setFormat] = useState<Format>('png');
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
@@ -133,7 +133,7 @@ function PageFive() {
   );
 }
 
-export default PageFive;
+export default LandingPage;
 
 const getStyles = (theme: GrafanaTheme2) => ({
   sceneContainer: css`
