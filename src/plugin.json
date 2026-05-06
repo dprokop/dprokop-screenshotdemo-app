@@ -30,7 +30,7 @@
     {
       "type": "page",
       "name": "Home",
-      "path": "/a/%PLUGIN_ID%/",
+      "path": "/a/%PLUGIN_ID%",
       "addToNav": true,
       "defaultNav": true
     }
