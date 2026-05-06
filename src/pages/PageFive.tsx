@@ -1,8 +1,16 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { css } from '@emotion/css';
 import { GrafanaTheme2 } from '@grafana/data';
 import { getPanelScreenshotService, PluginPage } from '@grafana/runtime';
-import { Alert, Button, Field, Input, Select, useStyles2 } from '@grafana/ui';
+import {
+  EmbeddedScene,
+  SceneFlexItem,
+  SceneFlexLayout,
+  SceneQueryRunner,
+  SceneTimeRange,
+  VizPanel,
+} from '@grafana/scenes';
+import { Alert, Button, Field, Select, useStyles2 } from '@grafana/ui';
 
 type Format = 'png' | 'jpeg' | 'webp';
 
@@ -12,42 +20,64 @@ const FORMAT_OPTIONS: Array<{ label: string; value: Format }> = [
   { label: 'WebP', value: 'webp' },
 ];
 
-const CODE_SNIPPET = `import { getPanelScreenshotService } from '@grafana/runtime';
-
-const blob = await getPanelScreenshotService().capture(panelPathId, {
-  format: 'png',
-  // sceneContext: this,  // pass a SceneObject if you have one
-});`;
-
 function PageFive() {
   const s = useStyles2(getStyles);
-  const [panelPathId, setPanelPathId] = useState('');
   const [format, setFormat] = useState<Format>('png');
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
   const urlRef = useRef<string | null>(null);
 
+  const { scene, vizPanel } = useMemo(() => {
+    const queryRunner = new SceneQueryRunner({
+      datasource: { type: 'grafana-testdata-datasource' },
+      queries: [{ refId: 'A', scenarioId: 'random_walk' }],
+    });
+
+    const panel = new VizPanel({
+      pluginId: 'timeseries',
+      title: 'Random walk',
+      $data: queryRunner,
+    });
+
+    const embeddedScene = new EmbeddedScene({
+      $timeRange: new SceneTimeRange({ from: 'now-1h', to: 'now' }),
+      body: new SceneFlexLayout({
+        direction: 'column',
+        children: [
+          new SceneFlexItem({
+            minHeight: 280,
+            body: panel,
+          }),
+        ],
+      }),
+    });
+
+    return { scene: embeddedScene, vizPanel: panel };
+  }, []);
+
   useEffect(() => {
+    const deactivate = scene.activate();
     return () => {
+      deactivate();
       if (urlRef.current) {
         URL.revokeObjectURL(urlRef.current);
       }
     };
-  }, []);
+  }, [scene]);
 
   const handleCapture = useCallback(async () => {
-    if (!panelPathId.trim()) {
-      return;
-    }
     setLoading(true);
     setError(null);
 
     try {
-      const blob = await getPanelScreenshotService().capture(panelPathId.trim(), { format });
+      const pathId = vizPanel.getPathId();
+      // sceneContext is added in grafana/grafana#124045 — cast until published types catch up
+      const blob = await getPanelScreenshotService().capture(pathId, {
+        sceneContext: scene,
+        format,
+      } as Parameters<ReturnType<typeof getPanelScreenshotService>['capture']>[1]);
       const url = URL.createObjectURL(blob);
-
       if (urlRef.current) {
         URL.revokeObjectURL(urlRef.current);
       }
@@ -59,41 +89,22 @@ function PageFive() {
     } finally {
       setLoading(false);
     }
-  }, [panelPathId, format]);
+  }, [vizPanel, scene, format]);
 
   return (
     <PluginPage>
-      <h2>Direct API</h2>
+      <h2>Self-contained scene demo</h2>
       <p>
-        This page demonstrates calling <code>getPanelScreenshotService().capture(panelPathId, options)</code> directly.
-        No plugin extension framework involved.
+        This page renders its own scene with a VizPanel, then captures it via the explicit{' '}
+        <code>sceneContext</code> API path. No external dashboard needed -{' '}
+        <code>getPanelScreenshotService().capture(vizPanel.getPathId(), {'{ sceneContext: scene }'})</code>.
       </p>
 
-      <pre className={s.codeBlock}>{CODE_SNIPPET}</pre>
-
-      <div className={s.instructions}>
-        <ol>
-          <li>
-            Open a Grafana dashboard <strong>in this same tab</strong>.
-          </li>
-          <li>
-            Open DevTools, find a panel&apos;s <code>data-viz-panel-id</code> attribute on its{' '}
-            <code>&lt;div&gt;</code> element.
-          </li>
-          <li>Paste the value below and click <strong>Capture</strong>.</li>
-        </ol>
+      <div className={s.sceneContainer}>
+        <scene.Component model={scene} />
       </div>
 
-      <div className={s.form}>
-        <Field label="panelPathId">
-          <Input
-            value={panelPathId}
-            onChange={(e) => setPanelPathId(e.currentTarget.value)}
-            placeholder="e.g. panel-12"
-            width={40}
-          />
-        </Field>
-
+      <div className={s.controls}>
         <Field label="Format">
           <Select
             options={FORMAT_OPTIONS}
@@ -102,8 +113,7 @@ function PageFive() {
             width={20}
           />
         </Field>
-
-        <Button onClick={handleCapture} disabled={loading || !panelPathId.trim()}>
+        <Button onClick={handleCapture} disabled={loading}>
           {loading ? 'Capturing...' : 'Capture'}
         </Button>
       </div>
@@ -126,34 +136,12 @@ function PageFive() {
 export default PageFive;
 
 const getStyles = (theme: GrafanaTheme2) => ({
-  codeBlock: css`
-    background: ${theme.colors.background.secondary};
-    border: 1px solid ${theme.colors.border.weak};
-    border-radius: ${theme.shape.radius.default};
-    padding: ${theme.spacing(2)};
-    font-family: ${theme.typography.fontFamilyMonospace};
-    font-size: ${theme.typography.bodySmall.fontSize};
-    white-space: pre;
-    overflow-x: auto;
+  sceneContainer: css`
+    height: 320px;
+    width: 100%;
     margin-bottom: ${theme.spacing(3)};
   `,
-  instructions: css`
-    background: ${theme.colors.background.secondary};
-    border-left: 3px solid ${theme.colors.primary.border};
-    padding: ${theme.spacing(2)};
-    margin-bottom: ${theme.spacing(3)};
-    border-radius: 0 ${theme.shape.radius.default} ${theme.shape.radius.default} 0;
-
-    ol {
-      margin: 0;
-      padding-left: ${theme.spacing(3)};
-    }
-
-    li {
-      margin-bottom: ${theme.spacing(0.5)};
-    }
-  `,
-  form: css`
+  controls: css`
     display: flex;
     align-items: flex-end;
     gap: ${theme.spacing(2)};
