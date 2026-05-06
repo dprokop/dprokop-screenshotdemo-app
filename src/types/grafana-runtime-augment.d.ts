@@ -24,7 +24,7 @@ declare module '@grafana/runtime' {
   }
 
   export interface PanelScreenshotService {
-    capture(panelKey: string, options?: PanelScreenshotOptions): Promise<Blob>;
+    capture(panelPathId: string, options?: PanelScreenshotOptions): Promise<Blob>;
   }
 
   export function getPanelScreenshotService(): PanelScreenshotService;

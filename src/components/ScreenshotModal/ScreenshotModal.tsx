@@ -38,7 +38,7 @@ export const ScreenshotModal = ({ context }: Props) => {
       setLoading(true);
       setError(null);
       try {
-        const captured = await getPanelScreenshotService().capture(context.panelKey, { format: next });
+        const captured = await getPanelScreenshotService().capture(context.panelPathId, { format: next });
         const url = URL.createObjectURL(captured);
 
         if (urlRef.current) {
@@ -59,7 +59,7 @@ export const ScreenshotModal = ({ context }: Props) => {
         setLoading(false);
       }
     },
-    [context.panelKey]
+    [context.panelPathId]
   );
 
   // Initial capture + recapture on format change.
@@ -144,7 +144,7 @@ export const ScreenshotModal = ({ context }: Props) => {
       </Stack>
 
       <div className={styles.meta}>
-        panelKey: <code>{context.panelKey}</code>
+        panelPathId: <code>{context.panelPathId}</code>
         {blob && (
           <>
             {' · '}
